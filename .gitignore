@@ -1,0 +1,12 @@
+# Ignore environment/config files
+include/dp.php
+include/config.php
+.env
+
+# Ignore Composer vendor folder (optional, can rebuild later)
+vendor/
+
+# Ignore IDE or OS files
+.vscode/
+.DS_Store
+Thumbs.db
