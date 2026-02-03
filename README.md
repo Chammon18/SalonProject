@@ -2,21 +2,21 @@
 
 ## Status
 
-Work in progress – not finished yet.
+Work in progress – this project is not finished yet.
 
-## Features
+## Description
 
-- Admin panel
-- Appointment management
-- Services and categories
-- Notifications
+SalonProject is a web application for managing a salon.  
+Features include:
 
-## How to use
+- User management
+- Services and categories management
+- Appointment booking and notifications
+- Admin dashboard
 
-1. Clone the repository
-2. Run `composer install` if dependencies are required
-3. Configure your database in `include/dp.php` (not included for security)
+## Installation
 
-## Note
-
-This project is a personal project and still under development.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Chammon18/SalonProject.git
+   ```

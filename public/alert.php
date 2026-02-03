@@ -88,3 +88,32 @@ if (!empty($error_msg) || !empty($success_msg)) : ?>
 
     reveals.forEach(el => observer.observe(el));
 </script>
+
+<!-- rebook -->
+<?php
+// SweetAlert2 for rebook.php
+if (!empty($error_msg) || !empty($success_msg)) : ?>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        <?php if (!empty($error_msg)): ?>
+            Swal.fire({
+                icon: 'error',
+                title: 'Booking Error',
+                text: <?= json_encode($error_msg) ?>,
+                confirmButtonColor: '#0d6efd' // primary color
+            });
+        <?php endif; ?>
+
+        <?php if (!empty($success_msg)) : ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Re-Booking Successful',
+                text: <?= json_encode($success_msg) ?>,
+                confirmButtonColor: '#0d6efd'
+            }).then(() => {
+                // redirect back to history page after success
+                window.location.href = 'history.php';
+            });
+        <?php endif; ?>
+    </script>
+<?php endif; ?>

@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['admin_name'] = $admin['name'];
             $_SESSION['role']       = 'admin';
 
-            header("Location: admin_profile.php");
+            header("Location: dashboard.php");
             exit;
         } else {
             $error = "Invalid admin email or password";

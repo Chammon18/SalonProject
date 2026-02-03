@@ -68,15 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             /* 1️⃣ Prevent same user booking same service on same day */
             foreach ($services as $sid) {
                 $sid = (int)$sid;
-                // check for same user booked same services in oneday
                 $existing = $mysqli->query("
-        SELECT COUNT(*) AS c
-        FROM appointments a
-        JOIN appointment_services aps ON aps.appointment_id = a.id
-        WHERE a.user_id = $user_id
-          AND aps.service_id = $sid
-          AND aps.status IN ('pending','confirmed')
-    ")->fetch_assoc()['c'];
+                            SELECT COUNT(*) AS c
+                            FROM appointments a
+                            JOIN appointment_services aps ON aps.appointment_id = a.id
+                            WHERE a.user_id = $user_id
+                            AND aps.service_id = $sid
+                            AND aps.status IN ('pending','confirmed')
+                        ")->fetch_assoc()['c'];
 
                 if ($existing > 0) {
                     $allAvailable = false;
@@ -84,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     break;
                 }
             }
-
 
             /* 2️⃣ Calculate total duration */
             if ($allAvailable) {
@@ -119,18 +117,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $serviceIds = implode(',', array_map('intval', $services));
 
                 $conflicts = $mysqli->query("
-        SELECT
-            a.appointment_time,
-            SUM(TIME_TO_SEC(s.duration)) AS duration_sec
-        FROM appointments a
-        JOIN appointment_services aps ON aps.appointment_id = a.id
-        JOIN services s ON s.id = aps.service_id
-        WHERE a.appointment_date = '$date'
-          AND aps.service_id IN ($serviceIds)
-          AND aps.status IN ('pending','confirmed')
-        GROUP BY a.id
-        ORDER BY a.appointment_time ASC
-    ");
+                            SELECT a.appointment_time,
+                            SUM(TIME_TO_SEC(s.duration)) AS duration_sec
+                            FROM appointments a
+                            JOIN appointment_services aps ON aps.appointment_id = a.id
+                            JOIN services s ON s.id = aps.service_id
+                            WHERE a.appointment_date = '$date'
+                            AND aps.service_id IN ($serviceIds)
+                            AND aps.status IN ('pending','confirmed')
+                            GROUP BY a.id
+                            ORDER BY a.appointment_time ASC
+                        ");
                 $conflictFound = false;
                 $nearestConflictEndTs = null;
 
@@ -140,7 +137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $conflictStart = strtotime("$date {$rowC['appointment_time']}");
                         $conflictEnd   = $conflictStart + (int)$rowC['duration_sec'];
 
-                        // 🔴 TRUE OVERLAP CHECK
+                        // TRUE OVERLAP CHECK
                         if ($startTs < $conflictEnd && $endTs > $conflictStart) {
 
                             $conflictFound = true;
@@ -193,8 +190,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     VALUES 
     (0, $appointment_id, '" . $mysqli->real_escape_string($notifMessage) . "', 0, 1)
 ");
-
-
         $success_msg = "Booking successful! Your appointment is on $date at $time.";
         $redirect_url = "confirmbooking.php";
     }

@@ -9,9 +9,8 @@ $errors = [];
 // FORM SUBMIT
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // =========================
+
     // GET & SANITIZE INPUTS
-    // =========================
     $category_id = (int)($_POST['category_id'] ?? 0);
     $name        = trim($_POST['name'] ?? '');
     $price       = trim($_POST['price'] ?? '');
@@ -19,9 +18,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $duration    = trim($_POST['duration'] ?? '');
     $status      = isset($_POST['status']) ? (int)$_POST['status'] : 1;
 
-    // =========================
     // VALIDATION
-    // =========================
+
     if ($category_id === 0) {
         $error = true;
         $errors['category'] = "Category is required";
@@ -47,9 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['duration'] = "Duration is required";
     }
 
-    // =========================
+
     // IMAGE UPLOAD
-    // =========================
+
     $image = '';
     if (!empty($_FILES['image']['name'])) {
 
@@ -74,9 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $errors['image'] = "Service image is required";
     }
 
-    // =========================
+
     // DUPLICATE CHECK
-    // =========================
+
     if (!$error) {
         $check = $mysqli->query("
             SELECT id FROM services 
@@ -90,9 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    // =========================
     // INSERT
-    // =========================
+
     if (!$error) {
 
         $sql = "
@@ -125,10 +122,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 ?>
-
-<!-- =========================
-     HTML FORM
-========================= -->
 
 <div class="content">
     <h3 class="text-white mb-4">Services Management</h3>

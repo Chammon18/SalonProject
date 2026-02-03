@@ -11,8 +11,10 @@ $user_id = (int)$_SESSION['id'];
 $sql = "
 SELECT
     a.id,
+    a.service_id,
     s.name AS service_name,
     s.price,
+    s.description,
     ap.appointment_date,
     ap.appointment_time,
     a.status
@@ -24,37 +26,47 @@ WHERE ap.user_id = $user_id
 ORDER BY ap.appointment_date DESC
 ";
 
-
-
 $result = $mysqli->query($sql);
 require_once("../include/header.php");
 ?>
 
-<div class="container mt-5">
-    <h3 class="text-center mb-5 fw-bold">My Service History</h3>
+<div class="container my-5">
+    <h3 class="mb-4 fw-bold text-center">Completed Service History</h3>
 
     <?php if ($result->num_rows > 0): ?>
         <div class="row g-4">
             <?php while ($row = $result->fetch_assoc()): ?>
-                <div class="col-md-6 col-lg-4">
-                    <div class="history-card">
-                        <div class="card-header">
-                            <?= htmlspecialchars($row['service_name']) ?>
-                            <span class="status-badge"><?= $row['status'] ?></span>
-                        </div>
-                        <div class="card-body">
-                            <p><i class="fa fa-calendar me-2"></i><?= date('d M Y', strtotime($row['appointment_date'])) ?></p>
-                            <p><i class="fa fa-clock me-2"></i><?= date('h:i A', strtotime($row['appointment_time'])) ?></p>
-                            <p><i class="fa fa-dollar-sign me-2"></i>$<?= number_format($row['price'], 2) ?></p>
+                <div class="col-lg-4 col-md-6">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title fw-bold"><?= htmlspecialchars($row['service_name']) ?></h5>
+
+                            <?php if (!empty($row['description'])): ?>
+                                <p class="card-text text-muted"><?= htmlspecialchars($row['description']) ?></p>
+                            <?php endif; ?>
+
+                            <p class="card-text mb-1">
+                                <strong>Date:</strong> <?= date('d M Y', strtotime($row['appointment_date'])) ?>
+                            </p>
+                            <p class="card-text mb-1">
+                                <strong>Time:</strong> <?= date('h:i A', strtotime($row['appointment_time'])) ?>
+                            </p>
+                            <p class="card-text mb-3">
+                                <strong>Price:</strong> <span class="text-success">Kyats <?= number_format($row['price']) ?></span>
+                            </p>
+                            <div class="mt-auto d-flex justify-content-between align-items-center">
+                                <span class="badge bg-success px-3 py-2">Completed</span>
+                                <a href="rebook.php?service_id=<?= $row['service_id'] ?>"
+                                    class="btn btn-sm btn-outline-primary">
+                                    Re-Book
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
             <?php endwhile; ?>
         </div>
     <?php else: ?>
-        <div class="no-history">
-            <i class="fa fa-bell-slash fa-3x"></i>
-            <p>No completed services yet.</p>
-        </div>
+        <p class="text-center text-muted mt-5">No completed services found.</p>
     <?php endif; ?>
 </div>

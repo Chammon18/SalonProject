@@ -77,7 +77,7 @@ require_once("../include/header.php");
         <div class="story-section row align-items-center mt-5">
             <div class="col-md-6 mb-4 mb-md-0 reveal-left">
                 <div class="story-img-wrapper" style="overflow: hidden; border-radius: 20px;">
-                    <img src="../image/close-up-nail-care-treatment.jpg" alt="Salon Interior" class="story-img w-100" style="transition: transform 0.5s;">
+                    <img src="../image/close-up-nail-care-treatment.jpg" alt="Salon Interior" class="story-img w-100" style="transition: transform 0.2s;">
                 </div>
             </div>
 
