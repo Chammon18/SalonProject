@@ -28,12 +28,35 @@ if (!$service) {
 
 /* Prepare variables */
 $error_msg = '';
+$warning_msg = '';
 $success_msg = '';
 $date = '';
 $time = '';
 $note = '';
 $nextAvailableTime = null;
 $allAvailable = false;
+
+// Cancellation policy (last 7 days)
+$warnThreshold = 4;
+$blockThreshold = 5;
+$cancelCount = 0;
+$isBlocked = false;
+$cancelRes = $mysqli->query("
+    SELECT COUNT(*) AS c
+    FROM appointments
+    WHERE user_id = $user_id
+      AND status IN ('cancelled','canceled')
+      AND appointment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+")->fetch_assoc();
+$cancelCount = (int)($cancelRes['c'] ?? 0);
+if ($cancelCount >= $blockThreshold) {
+    $isBlocked = true;
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        $error_msg = "Your bookings are temporarily blocked due to repeated cancellations (5+ in the last 7 days). Please contact the salon.";
+    }
+} elseif ($cancelCount >= $warnThreshold) {
+    $warning_msg = "You have cancelled $cancelCount times in the last 7 days. One more cancellation will block bookings for a week.";
+}
 
 /* Time slots */
 $timeSlots = [];
@@ -44,8 +67,28 @@ while ($t < $end) {
     $t = strtotime("+30 minutes", $t);
 }
 
+$durationToMinutes = function ($durationRaw) {
+    $durationMinutes = 0;
+    if (is_numeric($durationRaw)) {
+        $durationMinutes = (int)$durationRaw;
+        if ($durationMinutes > 1000) {
+            $durationMinutes = (int)round($durationMinutes / 60);
+        }
+    } elseif (strpos($durationRaw, ':') !== false) {
+        $parts = explode(':', $durationRaw);
+        $h = isset($parts[0]) ? (int)$parts[0] : 0;
+        $m = isset($parts[1]) ? (int)$parts[1] : 0;
+        $s = isset($parts[2]) ? (int)$parts[2] : 0;
+        $durationMinutes = ($h * 60) + $m + (int)floor($s / 60);
+    }
+    return $durationMinutes;
+};
+
 /* FORM SUBMIT */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if ($isBlocked) {
+        $error_msg = "Your bookings are temporarily blocked due to repeated cancellations (5+ in the last 7 days). Please contact the salon.";
+    } else {
 
     $date = $_POST['date'] ?? '';
     $time = $_POST['time'] ?? '';
@@ -70,10 +113,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $existing = $mysqli->query("
                 SELECT COUNT(*) AS c
                 FROM appointments a
-                JOIN appointment_services aps ON aps.appointment_id = a.id
                 WHERE a.user_id = $user_id
-                AND aps.service_id = $service_id
-                AND aps.status IN ('pending','confirmed')
+                AND a.service_id = $service_id
+                AND a.status IN ('pending','approved')
             ")->fetch_assoc()['c'];
 
             if ($existing > 0) {
@@ -83,49 +125,158 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             /* Calculate total duration */
             if ($allAvailable) {
-                $totalDuration = (int)strtotime($service['duration']) - strtotime('TODAY');
-                $endTs = $startTs + $totalDuration;
+                $durationMin = $durationToMinutes($service['duration']);
+                $totalDurationSec = $durationMin * 60;
+                $breakMinutes = 15;
+                $endTs = $startTs + $totalDurationSec;
+                $endWithBreakTs = $endTs + ($breakMinutes * 60);
 
-                if ($endTs > $closeTs) {
+                if ($endWithBreakTs > $closeTs) {
                     $allAvailable = false;
                     $error_msg = "Service duration exceeds shop closing time. Please choose another time.";
                 }
             }
 
-            /* Conflict check: same service + overlapping time */
+            /* Auto-assign staff based on availability */
             if ($allAvailable) {
+                $breakMinutes = 15;
+                $pickedStaff = null;
+                $bestNextAvailable = null;
 
-                $conflicts = $mysqli->query("
-                    SELECT a.appointment_time, TIME_TO_SEC(s.duration) AS duration_sec
-                    FROM appointments a
-                    JOIN appointment_services aps ON aps.appointment_id = a.id
-                    JOIN services s ON s.id = aps.service_id
-                    WHERE a.appointment_date='$date'
-                    AND aps.service_id=$service_id
-                    AND aps.status IN ('pending','confirmed')
-                ");
+                $catRes = $mysqli->query("
+                    SELECT category_id
+                    FROM services
+                    WHERE id = $service_id
+                    LIMIT 1
+                ")->fetch_assoc();
 
-                $conflictFound = false;
-                $nearestConflictEndTs = null;
+                if (!$catRes) {
+                    $allAvailable = false;
+                    $error_msg = "Service not found. Please try again.";
+                } else {
+                    $catId = (int)$catRes['category_id'];
+                    $svcEndWithBreak = $startTs + ($durationMin * 60) + ($breakMinutes * 60);
+                    $svcEnd = $startTs + ($durationMin * 60);
 
-                if ($conflicts && $conflicts->num_rows > 0) {
-                    while ($rowC = $conflicts->fetch_assoc()) {
-                        $conflictStart = strtotime("$date {$rowC['appointment_time']}");
-                        $conflictEnd   = $conflictStart + (int)$rowC['duration_sec'];
+                    // Category capacity check (e.g., nail seats)
+                    $capRow = $mysqli->query("
+                        SELECT capacity
+                        FROM categories
+                        WHERE id = $catId
+                        LIMIT 1
+                    ")->fetch_assoc();
+                    $cap = isset($capRow['capacity']) ? (int)$capRow['capacity'] : 0;
+                    if ($cap <= 0) {
+                        $staffCount = $mysqli->query("
+                            SELECT COUNT(*) AS c
+                            FROM staff_categories
+                            WHERE category_id = $catId
+                        ")->fetch_assoc();
+                        $cap = (int)$staffCount['c'];
+                    }
 
-                        if ($startTs < $conflictEnd && $endTs > $conflictStart) {
-                            $conflictFound = true;
-                            if ($nearestConflictEndTs === null || $conflictEnd > $nearestConflictEndTs) {
-                                $nearestConflictEndTs = $conflictEnd;
+                    if ($cap <= 0) {
+                        $allAvailable = false;
+                        $error_msg = "Selected time is FULL for this service category. Please choose another time.";
+                    } else {
+                        $apptRes = $mysqli->query("
+                            SELECT a.appointment_time, s.duration
+                            FROM appointments a
+                            JOIN services s ON s.id = a.service_id
+                            WHERE a.appointment_date = '$date'
+                              AND a.status IN ('pending','approved')
+                              AND s.category_id = $catId
+                        ");
+                        $overlapCount = 0;
+                        $nextSeatFreeTs = null;
+                        if ($apptRes && $apptRes->num_rows > 0) {
+                            while ($ar = $apptRes->fetch_assoc()) {
+                                $aStart = strtotime("$date {$ar['appointment_time']}");
+                                $aMin = $durationToMinutes($ar['duration']);
+                                $aEnd = $aStart + ($aMin * 60);
+                                $aEndWithBreak = $aEnd + ($breakMinutes * 60);
+                                if ($startTs < $aEnd && $svcEnd > $aStart) {
+                                    $overlapCount++;
+                                    if ($nextSeatFreeTs === null || $aEndWithBreak < $nextSeatFreeTs) {
+                                        $nextSeatFreeTs = $aEndWithBreak;
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($overlapCount >= $cap) {
+                            $allAvailable = false;
+                            if ($nextSeatFreeTs !== null) {
+                                $nextAvailableTime = date("H:i", $nextSeatFreeTs);
+                                $error_msg = "Selected time is FULL for this service category. Next available time: $nextAvailableTime";
+                            } else {
+                                $error_msg = "Selected time is FULL for this service category. Please choose another time.";
                             }
                         }
                     }
-                }
 
-                if ($conflictFound) {
-                    $allAvailable = false;
-                    $nextAvailableTime = date("H:i", $nearestConflictEndTs);
-                    $error_msg = "Selected time is FULL. Next available time: $nextAvailableTime";
+                    if ($allAvailable) {
+                        $staffRes = $mysqli->query("
+                            SELECT st.id, st.name
+                            FROM staff st
+                            JOIN staff_categories sc ON sc.staff_id = st.id
+                            WHERE sc.category_id = $catId
+                            ORDER BY st.name ASC
+                        ");
+
+                        if ($staffRes && $staffRes->num_rows > 0) {
+                            while ($st = $staffRes->fetch_assoc()) {
+                                $staffId = (int)$st['id'];
+
+                                $busyRes = $mysqli->query("
+                                    SELECT a.appointment_time, s.duration
+                                    FROM appointments a
+                                    JOIN services s ON s.id = a.service_id
+                                    WHERE a.appointment_date = '$date'
+                                      AND a.status IN ('pending','approved')
+                                      AND a.staff_id = $staffId
+                                ");
+
+                                $isBusy = false;
+                                $staffNextAvailable = null;
+                                if ($busyRes && $busyRes->num_rows > 0) {
+                                    while ($b = $busyRes->fetch_assoc()) {
+                                        $bStart = strtotime("$date {$b['appointment_time']}");
+                                        $bMin = $durationToMinutes($b['duration']);
+                                        $bEnd = $bStart + ($bMin * 60);
+                                        $bEndWithBreak = $bEnd + ($breakMinutes * 60);
+
+                                        if ($startTs < $bEndWithBreak && $svcEndWithBreak > $bStart) {
+                                            $isBusy = true;
+                                            if ($staffNextAvailable === null || $bEndWithBreak > $staffNextAvailable) {
+                                                $staffNextAvailable = $bEndWithBreak;
+                                            }
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (!$isBusy) {
+                                    $pickedStaff = $staffId;
+                                    break;
+                                } else {
+                                    if ($staffNextAvailable !== null && ($bestNextAvailable === null || $staffNextAvailable < $bestNextAvailable)) {
+                                        $bestNextAvailable = $staffNextAvailable;
+                                    }
+                                }
+                            }
+                        }
+
+                        if ($pickedStaff === null) {
+                            $allAvailable = false;
+                            if ($bestNextAvailable !== null) {
+                                $nextAvailableTime = date("H:i", $bestNextAvailable);
+                                $error_msg = "Selected time is FULL for this service category. Next available time: $nextAvailableTime";
+                            } else {
+                                $error_msg = "Selected time is FULL for this service category. Please choose another time.";
+                            }
+                        }
+                    }
                 }
             }
 
@@ -134,22 +285,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 $note_safe = $mysqli->real_escape_string($note);
 
-                /* Insert appointment */
+                $appointment_group_id = bin2hex(random_bytes(8));
+
+                $staffSql = $pickedStaff !== null ? (int)$pickedStaff : "NULL";
+                /* Insert appointment (single service) */
                 $mysqli->query("
         INSERT INTO appointments
-        (user_id, appointment_date, appointment_time, request, status)
+        (appointment_group_id, user_id, service_id, staff_id, appointment_date, appointment_time, request, status)
         VALUES
-        ($user_id, '$date', '$time', '$note_safe', 'pending')
+        ('$appointment_group_id', $user_id, $service_id, $staffSql, '$date', '$time', '$note_safe', 'pending')
     ");
 
                 $appointment_id = $mysqli->insert_id;
-
-                /* Link service */
-                $mysqli->query("
-        INSERT INTO appointment_services
-        (appointment_id, service_id, status)
-        VALUES ($appointment_id, $service_id, 'pending')
-    ");
 
                 /* Insert notification AFTER appointment_id exists */
                 $notifMessage = "New appointment booked by " . htmlspecialchars($user['name']) . " on $date at $time.";
@@ -165,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     }
+    }
 }
 
 require_once("../include/header.php");
@@ -174,7 +322,7 @@ require_once("../include/header.php");
     <div class="row justify-content-center">
         <div class="col-lg-6 col-md-8">
             <div class="card shadow-lg border-0 p-4">
-                <h4 class="text-center mb-4 fw-bold text-primary">Re-Book: <?= htmlspecialchars($service['name']) ?></h4>
+                <h4 class="text-center mb-4 fw-bold text-primary"><?= htmlspecialchars($service['name']) ?></h4>
 
                 <form method="post" class="row g-3">
 
@@ -202,7 +350,7 @@ require_once("../include/header.php");
                     </div>
 
                     <div class="col-12 text-center mt-3">
-                        <button type="submit" class="btn btn-primary btn-lg px-5">Confirm Re-Book</button>
+                        <button type="submit" class="btn btn-primary btn-lg px-5" <?= $isBlocked ? 'disabled' : '' ?>>Confirm Re-Book</button>
                         <a href="history.php" class="btn btn-outline-secondary btn-lg px-4">Cancel</a>
                     </div>
 

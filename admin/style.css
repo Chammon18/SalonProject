@@ -389,3 +389,42 @@ table tbody tr {
         .back-link:hover {
             text-decoration: underline;
         }
+/* report */
+   .report-compact .card {
+        border-radius: 12px;
+    }
+
+    .report-compact .form-label {
+        font-size: 12px;
+        margin-bottom: 4px;
+        color: #555;
+    }
+
+    .report-compact .form-control,
+    .report-compact .form-select {
+        height: 36px;
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+    .report-compact .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .compact-table th,
+    .compact-table td {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+
+    .compact-table thead th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+/* report end */
+/* appointment */
+    .row-muted {
+        opacity: 0.55;
+    }

@@ -42,10 +42,9 @@ if ($isLoggedIn) {
     // Fetch completed service count
     $completed_res = $mysqli->query("
     SELECT COUNT(*) AS completed_count
-    FROM appointment_services a
-    JOIN appointments ap ON a.appointment_id = ap.id
-    WHERE ap.user_id = $user_id
-      AND a.status = 'completed'
+    FROM appointments
+    WHERE user_id = $user_id
+      AND status = 'completed'
 ");
 
     $completed_count = $completed_res->fetch_assoc()['completed_count'] ?? 0;
@@ -84,6 +83,7 @@ if ($isLoggedIn) {
                     <li class="nav-item"><a class="nav-link active" href="../Mainpage/index.php">Home</a></li>
                     <li class="nav-item"><a class="nav-link" href="../Mainpage/services.php">Services</a></li>
                     <li class="nav-item"><a class="nav-link" href="../Mainpage/about.php">Contact Us</a></li>
+                    <!-- <li class="nav-item"><a class="nav-link" href="../Mainpage/promotion.php">Promotions</a></li> -->
                     <li class="nav-item ms-lg-3"><a href="../Mainpage/book.php"
                             class="btn btn-login"
                             id="bookNowBtn">

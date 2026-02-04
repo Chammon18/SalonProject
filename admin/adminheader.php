@@ -37,7 +37,10 @@ $adminName = $_SESSION['admin_name'];
         </h4>
         <a href="dashboard.php"><i class="fa-solid fa-grip"></i> Dashboard</a>
         <a href="services.php"><i class="fa-solid fa-list"></i> Services</a>
+        <a href="categories.php"><i class="fa-solid fa-layer-group"></i> Categories</a>
+        <a href="reports.php"><i class="fa-solid fa-chart-column"></i>Report</a>
         <a href="appointment.php"><i class="fa-regular fa-calendar-check"></i> Appointments</a>
+        <!-- <a href="promotions.php"><i class="fa-solid fa-percent"></i> Promotions</a> -->
         <a href="user_management.php"><i class="fa-solid fa-users"></i> User Management</a>
         <a href="notification.php"><i class="fa-regular fa-bell"></i> Notifications</a>
         <a href="admin_profile.php"><i class="fa-solid fa-user-tie"></i> Profile</a>

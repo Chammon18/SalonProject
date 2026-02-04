@@ -1,6 +1,6 @@
 <?php
 // for book.php alert
-if (!empty($error_msg) || !empty($success_msg)) : ?>
+if (!empty($error_msg) || !empty($success_msg) || !empty($warning_msg)) : ?>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
         <?php if (!empty($error_msg)): ?>
@@ -9,6 +9,15 @@ if (!empty($error_msg) || !empty($success_msg)) : ?>
                 title: 'Booking Error',
                 text: <?= json_encode($error_msg) ?>,
                 confirmButtonColor: '#28a745'
+            });
+        <?php endif; ?>
+
+        <?php if (!empty($warning_msg)): ?>
+            Swal.fire({
+                icon: 'warning',
+                title: 'Notice',
+                text: <?= json_encode($warning_msg) ?>,
+                confirmButtonColor: '#f0ad4e'
             });
         <?php endif; ?>
 

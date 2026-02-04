@@ -20,22 +20,24 @@ SELECT
     u.phone AS user_phone,
     s.id AS service_id,
     s.name AS service_name,
-    TIME_TO_SEC(s.duration) AS duration_sec,
-    aps.status AS service_status
+    s.duration AS duration_raw,
+    s.category_id AS category_id,
+    st.name AS staff_name
 FROM appointments a
 JOIN users u ON u.id = a.user_id
-JOIN appointment_services aps ON aps.appointment_id = a.id
-JOIN services s ON s.id = aps.service_id
+JOIN services s ON s.id = a.service_id
+LEFT JOIN staff st ON st.id = a.staff_id
 WHERE a.appointment_date = '$selectedDate'
 " . ($statusSafe ? " AND a.status = '$statusSafe'" : "") . "
  ORDER BY 
-    FIELD(aps.status, 'pending', 'confirmed', 'completed', 'cancelled'),
+    FIELD(a.status, 'pending', 'approved', 'completed', 'cancelled'),
     a.appointment_time ASC
 
     ";
 
 
 $result = $mysqli->query($sql);
+$isPastSelected = strtotime($selectedDate) < strtotime(date('Y-m-d'));
 
 ?>
 
@@ -50,7 +52,7 @@ $result = $mysqli->query($sql);
             <select name="status" class="form-select">
                 <option value="">All Status</option>
                 <?php
-                foreach (['pending', 'confirmed', 'completed', 'cancelled'] as $s) {
+                foreach (['pending', 'approved', 'completed', 'cancelled'] as $s) {
                     $sel = $statusFilter === $s ? 'selected' : '';
                     echo "<option value='$s' $sel>" . ucfirst($s) . "</option>";
                 }
@@ -82,24 +84,88 @@ $result = $mysqli->query($sql);
                 </thead>
                 <tbody>
                     <?php if ($result && $result->num_rows > 0): ?>
+                        <?php
+                        $breakMinutes = 15;
+                        $categoryStaffCount = [];
+                        $categoryAppointments = [];
+                        $durationToMinutes = function ($durationRaw) {
+                            $durationMinutes = 0;
+                            if (is_numeric($durationRaw)) {
+                                $durationMinutes = (int)$durationRaw;
+                                if ($durationMinutes > 1000) {
+                                    $durationMinutes = (int)round($durationMinutes / 60);
+                                }
+                            } elseif (strpos($durationRaw, ':') !== false) {
+                                $parts = explode(':', $durationRaw);
+                                $h = isset($parts[0]) ? (int)$parts[0] : 0;
+                                $m = isset($parts[1]) ? (int)$parts[1] : 0;
+                                $s = isset($parts[2]) ? (int)$parts[2] : 0;
+                                $durationMinutes = ($h * 60) + $m + (int)floor($s / 60);
+                            }
+                            return $durationMinutes;
+                        };
+                        ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
 
                             <?php
+                            $categoryId = (int)$row['category_id'];
                             // Start time per appointment
                             $startTime = strtotime($row['appointment_time']);
-                            $endTime   = strtotime("+{$row['duration_sec']} seconds", $startTime);
+                            $durationMinutes = $durationToMinutes($row['duration_raw']);
+                            $endTime   = strtotime("+{$durationMinutes} minutes", $startTime);
 
-                            // Staff & availability (example)
-                            if (in_array($row['service_status'], ['pending', 'confirmed'])) {
-                                $staffText = "1 / 1 booked";
+                            if (!isset($categoryStaffCount[$categoryId])) {
+                                $countRes = $mysqli->query("
+                                    SELECT COUNT(*) AS c
+                                    FROM staff_categories
+                                    WHERE category_id = $categoryId
+                                ")->fetch_assoc();
+                                $categoryStaffCount[$categoryId] = (int)$countRes['c'];
+                            }
+
+                            if (!isset($categoryAppointments[$categoryId])) {
+                                $apptRes = $mysqli->query("
+                                    SELECT a.staff_id, a.appointment_time, s.duration
+                                    FROM appointments a
+                                    JOIN services s ON s.id = a.service_id
+                                    WHERE a.appointment_date = '$selectedDate'
+                                      AND a.status IN ('pending','approved')
+                                      AND s.category_id = $categoryId
+                                      AND a.staff_id IS NOT NULL
+                                ");
+                                $categoryAppointments[$categoryId] = [];
+                                if ($apptRes && $apptRes->num_rows > 0) {
+                                    while ($ar = $apptRes->fetch_assoc()) {
+                                        $categoryAppointments[$categoryId][] = $ar;
+                                    }
+                                }
+                            }
+
+                            $busyStaff = [];
+                            $windowStart = $startTime;
+                            $windowEnd = $endTime;
+                            foreach ($categoryAppointments[$categoryId] as $ar) {
+                                $aStart = strtotime($ar['appointment_time']);
+                                $aMinutes = $durationToMinutes($ar['duration']);
+                                $aEnd = $aStart + ($aMinutes * 60);
+                                $aEndWithBreak = $aEnd + ($breakMinutes * 60);
+                                if ($windowStart < $aEndWithBreak && $windowEnd > $aStart) {
+                                    $busyStaff[(int)$ar['staff_id']] = true;
+                                }
+                            }
+
+                            $totalStaff = $categoryStaffCount[$categoryId];
+                            $bookedCount = count($busyStaff);
+                            $staffText = $bookedCount . " / " . $totalStaff . " booked";
+                            if ($totalStaff > 0 && $bookedCount >= $totalStaff) {
                                 $availability = "<span class='badge bg-danger'>FULL</span>";
                             } else {
-                                $staffText = "0 / 0 booked";
                                 $availability = "<span class='badge bg-success'>Available</span>";
                             }
                             ?>
 
-                            <tr>
+                            <?php $isPastRow = strtotime($row['appointment_date']) < strtotime(date('Y-m-d')); ?>
+                            <tr class="<?= $isPastRow ? 'row-muted' : '' ?>">
                                 <td><?= $row['appointment_id'] ?></td>
                                 <td><?= htmlspecialchars($row['user_name']) ?></td>
                                 <td><?= htmlspecialchars($row['user_phone']) ?></td>
@@ -111,22 +177,31 @@ $result = $mysqli->query($sql);
 
                                 <td>
                                     <span class="badge
-                    <?= $row['service_status'] === 'confirmed' ? 'bg-success'
-                                : ($row['service_status'] === 'cancelled' ? 'bg-danger'
-                                    : ($row['service_status'] === 'completed' ? 'bg-secondary'
+                    <?= $row['appointment_status'] === 'approved' ? 'bg-success'
+                                : ($row['appointment_status'] === 'cancelled' ? 'bg-danger'
+                                    : ($row['appointment_status'] === 'completed' ? 'bg-secondary'
                                         : 'bg-warning')) ?>">
-                                        <?= ucfirst($row['service_status']) ?>
+                                        <?= ucfirst($row['appointment_status']) ?>
                                     </span>
                                 </td>
 
-                                <td><small class="text-muted"><?= $staffText ?></small></td>
+                                <td>
+                                    <div><?= htmlspecialchars($row['staff_name'] ?? 'Unassigned') ?></div>
+                                    <small class="text-muted"><?= $staffText ?></small>
+                                </td>
                                 <td><?= $availability ?></td>
 
                                 <td class="text-center">
-                                    <a href="appointment_edit.php?id=<?= $row['appointment_id'] ?>"
-                                        class="btn btn-sm btn-primary">
-                                        <i class="fa-regular fa-pen-to-square"></i>
-                                    </a>
+                                    <?php if ($isPastRow): ?>
+                                        <button class="btn btn-sm btn-secondary" disabled title="Past appointment is locked">
+                                            <i class="fa-solid fa-lock"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <a href="appointment_edit.php?id=<?= $row['appointment_id'] ?>"
+                                            class="btn btn-sm btn-primary">
+                                            <i class="fa-regular fa-pen-to-square"></i>
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
 

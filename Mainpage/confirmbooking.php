@@ -13,11 +13,25 @@ $user_id = (int)$_SESSION['id'];
 
 // Get appointment_id from GET (or latest if none)
 $appointment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$appointment_group_id = '';
 
-if (!$appointment_id) {
-    // fallback to latest booking
+if ($appointment_id) {
+    $groupRes = $mysqli->query("
+        SELECT appointment_group_id
+        FROM appointments
+        WHERE id = $appointment_id AND user_id = $user_id
+        LIMIT 1
+    ");
+    if ($groupRes->num_rows > 0) {
+        $appointment_group_id = $groupRes->fetch_assoc()['appointment_group_id'];
+    }
+}
+
+if (!$appointment_group_id) {
+    // fallback to latest booking group
     $res = $mysqli->query("
-        SELECT id FROM appointments 
+        SELECT appointment_group_id
+        FROM appointments 
         WHERE user_id = $user_id 
         ORDER BY id DESC 
         LIMIT 1
@@ -26,14 +40,16 @@ if (!$appointment_id) {
         echo "<div class='container my-5'><div class='alert alert-warning'>No booking found.</div></div>";
         exit;
     }
-    $appointment_id = $res->fetch_assoc()['id'];
+    $appointment_group_id = $res->fetch_assoc()['appointment_group_id'];
 }
 
-// Fetch appointment
+// Fetch one appointment row for date/time/status
 $appointment_res = $mysqli->query("
     SELECT *
     FROM appointments
-    WHERE id = $appointment_id AND user_id = $user_id
+    WHERE appointment_group_id = '$appointment_group_id' AND user_id = $user_id
+    ORDER BY id ASC
+    LIMIT 1
 ");
 if ($appointment_res->num_rows === 0) {
     echo "<div class='container my-5'><div class='alert alert-warning'>Booking not found.</div></div>";
@@ -45,13 +61,14 @@ $appointment = $appointment_res->fetch_assoc();
 $user_res = $mysqli->query("SELECT name, phone FROM users WHERE id = $user_id");
 $user = $user_res->fetch_assoc();
 
-// Fetch all services for this appointment
+// Fetch all services for this appointment group
 $services_res = $mysqli->query("
     SELECT s.name AS service_name, c.name AS category_name, s.description, s.price, s.duration
-    FROM appointment_services aps
-    JOIN services s ON aps.service_id = s.id
+    FROM appointments a
+    JOIN services s ON a.service_id = s.id
     JOIN categories c ON s.category_id = c.id
-    WHERE aps.appointment_id = $appointment_id
+    WHERE a.appointment_group_id = '$appointment_group_id'
+      AND a.user_id = $user_id
     ORDER BY c.name, s.name
 ");
 

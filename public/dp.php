@@ -56,45 +56,80 @@ function create_table($mysqli)
     )";
     if ($mysqli->query($user_sql) == false) return false;
 
+    // categories
+    $category_sql = "CREATE TABLE IF NOT EXISTS `categories`
+    (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    incentive_percent DECIMAL(5,2) NOT NULL,
+    capacity INT DEFAULT NULL,
+    -- status TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )";
+    if ($mysqli->query($category_sql) == false) return false;
+
+    // add capacity column if missing (for existing DBs)
+    $capCol = $mysqli->query("SHOW COLUMNS FROM categories LIKE 'capacity'");
+    if ($capCol && $capCol->num_rows === 0) {
+        $mysqli->query("ALTER TABLE categories ADD capacity INT DEFAULT NULL");
+    }
+
     //services
     $service_sql = "CREATE TABLE IF NOT EXISTS `services`
     (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    category_id INT NOT NULL,
     name VARCHAR(100) NOT NULL,
     image VARCHAR(255) NOT NULL,
     description TEXT,
     price INT NOT NULL,
     duration INT COMMENT 'minutes',
     status TINYINT DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE RESTRICT
 )";
     if ($mysqli->query($service_sql) == false) return false;
 
-    // appointment
-    $appointment_sql = "CREATE TABLE IF NOT EXISTS `appointments`
+    // staff
+    $staff_sql = "CREATE TABLE IF NOT EXISTS `staff`
     (
     id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    phone VARCHAR(50) DEFAULT NULL
+    )";
+    if ($mysqli->query($staff_sql) == false) return false;
+
+    // staff_categories (many-to-many staff <-> categories)
+    $staff_categories_sql = "CREATE TABLE IF NOT EXISTS `staff_categories`
+    (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    staff_id INT NOT NULL,
+    category_id INT NOT NULL,
+    UNIQUE (staff_id, category_id),
+    FOREIGN KEY (staff_id) REFERENCES staff(id),
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+    )";
+    if ($mysqli->query($staff_categories_sql) == false) return false;
+
+    //    appointments
+    $appointment_query = "CREATE TABLE IF NOT EXISTS `appointments`
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appointment_group_id VARCHAR(30) NOT NULL,
     user_id INT NOT NULL,
+    service_id INT NOT NULL,
+    staff_id INT DEFAULT NULL,
     appointment_date DATE NOT NULL,
     appointment_time TIME NOT NULL,
-    status ENUM('pending','confirmed','completed','cancelled') DEFAULT 'pending',
+    request TEXT,
+    status ENUM('pending','approved','cancelled','completed') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )";
-    if ($mysqli->query($appointment_sql) == false) return false;
-
-    // appointment_service
-    $appointmentS_sql = "CREATE TABLE IF NOT EXISTS `appointment_services`
-    (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    appointment_id INT NOT NULL,
-    service_id INT NOT NULL,
-    status ENUM('pending','confirmed','completed','cancelled') DEFAULT 'pending',
-    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE,
-    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE
-    )";
-    if ($mysqli->query($appointmentS_sql) == false) return false;
-
+    UNIQUE (appointment_group_id, service_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE RESTRICT,
+    FOREIGN KEY (staff_id) REFERENCES staff(id) ON DELETE SET NULL
+)";
+    if ($mysqli->query($appointment_query) == false) return false;
 
     // notification
     $notification_sql = "CREATE TABLE IF NOT EXISTS `notifications` 
@@ -104,7 +139,24 @@ function create_table($mysqli)
     appointment_id INT NOT NULL,
     message VARCHAR(255) NOT NULL,
     is_read TINYINT(1) DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id) ON DELETE CASCADE
 )";
     if ($mysqli->query($notification_sql) == false) return false;
+
+    // promotions
+    $promotion_sql = "CREATE TABLE IF NOT EXISTS `promotions`
+    (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    image VARCHAR(255),
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    discount VARCHAR(50), -- e.g., '20%', 'Buy 1 Get 1'
+    status TINYINT(1) DEFAULT 1, -- 1 = active, 0 = inactive
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )";
+    if ($mysqli->query($promotion_sql) == false) return false;
+
 }

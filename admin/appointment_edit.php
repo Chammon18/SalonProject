@@ -4,7 +4,7 @@ require_once("adminheader.php");
 
 /* ---------------- VALIDATE ID ---------------- */
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
-    header("Location: appointments.php");
+    header("Location: appointment.php");
     exit;
 }
 $appointment_id = (int)$_GET['id'];
@@ -18,38 +18,47 @@ $appointment = $mysqli->query("
 ")->fetch_assoc();
 
 if (!$appointment) {
-    header("Location: appointments.php");
+    header("Location: appointment.php");
     exit;
 }
 
+$isPast = strtotime($appointment['appointment_date']) < strtotime(date('Y-m-d'));
+
 /* ---------------- FETCH SERVICES + STATUS ---------------- */
 $services = $mysqli->query("
-    SELECT aps.id AS aps_id, s.name, aps.status
-    FROM appointment_services aps
-    JOIN services s ON s.id = aps.service_id
-    WHERE aps.appointment_id = $appointment_id
+    SELECT a.id AS appointment_id, s.name, s.category_id, a.status, a.staff_id
+    FROM appointments a
+    JOIN services s ON s.id = a.service_id
+    WHERE a.appointment_group_id = '{$appointment['appointment_group_id']}'
+    ORDER BY s.name ASC
 ");
 
 /* ---------------- UPDATE SERVICE STATUS ---------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status'])) {
+    if ($isPast) {
+        header("Location: appointment.php?error=past_locked");
+        exit;
+    }
 
-    foreach ($_POST['status'] as $aps_id => $new_status) {
-        $aps_id = (int)$aps_id;
+    foreach ($_POST['status'] as $appt_id => $new_status) {
+        $appt_id = (int)$appt_id;
         $new_status = $mysqli->real_escape_string($new_status);
+        $staff_id = isset($_POST['staff'][$appt_id]) ? (int)$_POST['staff'][$appt_id] : 0;
+        $staff_sql = $staff_id > 0 ? $staff_id : "NULL";
 
-        // Update service-level status
+        // Update appointment row (service-level)
         $mysqli->query("
-            UPDATE appointment_services
-            SET status='$new_status'
-            WHERE id=$aps_id
+            UPDATE appointments
+            SET status='$new_status', staff_id=$staff_sql
+            WHERE id=$appt_id
         ");
 
         // Fetch service name for notification
         $sName = $mysqli->query("
             SELECT s.name
-            FROM appointment_services aps
-            JOIN services s ON s.id = aps.service_id
-            WHERE aps.id=$aps_id
+            FROM appointments a
+            JOIN services s ON s.id = a.service_id
+            WHERE a.id=$appt_id
         ")->fetch_assoc()['name'];
 
         $dateFormatted = date("d M", strtotime($appointment['appointment_date']));
@@ -57,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status'])) {
 
         // Prepare message
         $message = match ($new_status) {
-            'confirmed' => "Your appointment for $sName on $dateFormatted at $timeFormatted has been confirmed.",
+            'approved' => "Your appointment for $sName on $dateFormatted at $timeFormatted has been approved.",
             'completed' => "Your appointment for $sName on $dateFormatted at $timeFormatted has been completed. Thank you for visiting us.",
             'cancelled' => "Your appointment for $sName on $dateFormatted at $timeFormatted has been cancelled.",
             default => "Your appointment for $sName on $dateFormatted at $timeFormatted has been updated."
@@ -65,19 +74,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status'])) {
 
         $mysqli->query("
             INSERT INTO notifications (user_id, appointment_id, message, is_read)
-            VALUES ({$appointment['user_id']}, $appointment_id, '" . $mysqli->real_escape_string($message) . "', 0)
+            VALUES ({$appointment['user_id']}, $appt_id, '" . $mysqli->real_escape_string($message) . "', 0)
         ");
     }
 
-    // Update overall appointment status
+    // Update overall appointment status for the group
     $pendingCount = $mysqli->query("
         SELECT COUNT(*) AS c
-        FROM appointment_services
-        WHERE appointment_id=$appointment_id AND status!='completed'
+        FROM appointments
+        WHERE appointment_group_id = '{$appointment['appointment_group_id']}'
+          AND status NOT IN ('completed','cancelled')
     ")->fetch_assoc()['c'];
 
-    $overallStatus = $pendingCount == 0 ? 'completed' : 'confirmed';
-    $mysqli->query("UPDATE appointments SET status='$overallStatus' WHERE id=$appointment_id");
+    $overallStatus = $pendingCount == 0 ? 'completed' : 'approved';
+    $mysqli->query("
+        UPDATE appointments
+        SET status='$overallStatus'
+        WHERE appointment_group_id = '{$appointment['appointment_group_id']}'
+          AND status NOT IN ('completed','cancelled')
+    ");
 
     header("Location: appointment.php?success=updated");
     exit;
@@ -102,24 +117,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['status'])) {
                 <?= date('H:i', strtotime($appointment['appointment_time'])) ?>
             </div>
 
+            <?php if ($isPast): ?>
+                <div class="alert alert-secondary">
+                    This appointment is in the past. Editing is disabled to protect records.
+                </div>
+            <?php endif; ?>
+
             <form method="post">
                 <?php
                 $services->data_seek(0); // reset pointer
                 while ($s = $services->fetch_assoc()):
+                    $categoryId = (int)$s['category_id'];
+                    $staffList = $mysqli->query("
+                        SELECT st.id, st.name
+                        FROM staff st
+                        JOIN staff_categories sc ON sc.staff_id = st.id
+                        WHERE sc.category_id = $categoryId
+                        ORDER BY st.name ASC
+                    ");
                 ?>
                     <div class="mb-3">
                         <strong><?= htmlspecialchars($s['name']) ?></strong><br>
-                        <select name="status[<?= $s['aps_id'] ?>]" class="form-select" required>
-                            <?php foreach (['pending', 'confirmed', 'completed', 'cancelled'] as $st): ?>
+                        <select name="status[<?= $s['appointment_id'] ?>]" class="form-select" required <?= $isPast ? 'disabled' : '' ?>>
+                            <?php foreach (['pending', 'approved', 'completed', 'cancelled'] as $st): ?>
                                 <option value="<?= $st ?>" <?= $s['status'] === $st ? 'selected' : '' ?>>
                                     <?= ucfirst($st) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                        <select name="staff[<?= $s['appointment_id'] ?>]" class="form-select mt-2" <?= $isPast ? 'disabled' : '' ?>>
+                            <option value="0">Unassigned</option>
+                            <?php while ($stf = $staffList->fetch_assoc()): ?>
+                                <option value="<?= $stf['id'] ?>" <?= ((int)$s['staff_id'] === (int)$stf['id']) ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($stf['name']) ?>
+                                </option>
+                            <?php endwhile; ?>
+                        </select>
                     </div>
                 <?php endwhile; ?>
 
-                <button type="submit" class="btn btn-success">Update Status</button>
+                <button type="submit" class="btn btn-success" <?= $isPast ? 'disabled' : '' ?>>Update Status</button>
                 <a href="appointment.php" class="btn btn-secondary">Back</a>
             </form>
 

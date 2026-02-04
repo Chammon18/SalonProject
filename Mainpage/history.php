@@ -15,15 +15,14 @@ SELECT
     s.name AS service_name,
     s.price,
     s.description,
-    ap.appointment_date,
-    ap.appointment_time,
+    a.appointment_date,
+    a.appointment_time,
     a.status
-FROM appointment_services a
-JOIN appointments ap ON a.appointment_id = ap.id
+FROM appointments a
 JOIN services s ON a.service_id = s.id
-WHERE ap.user_id = $user_id
+WHERE a.user_id = $user_id
   AND a.status = 'completed'
-ORDER BY ap.appointment_date DESC
+ORDER BY a.appointment_date DESC
 ";
 
 $result = $mysqli->query($sql);
