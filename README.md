@@ -21,6 +21,20 @@ Features include:
    git clone https://github.com/Chammon18/SalonProject.git
    ```
 
+## Local configuration (recommended)
+
+Do not commit `public/dp.php` because it contains database credentials. Instead:
+
+1. Copy the example file:
+   ```bash
+   cp public/dp.example.php public/dp.php
+   ```
+2. Open `public/dp.php` and replace `CHANGE_ME` with your real DB username/password.
+
+Notes:
+- `public/dp.php` is ignored by git so it stays only on your machine.
+- If you ever committed real credentials before, change those passwords immediately.
+
 ## 1.Always Pull Latest Code First
 
 git pull origin main

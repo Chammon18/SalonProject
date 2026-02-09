@@ -25,3 +25,4 @@ if (!$admin || $admin['status'] !== 'active') {
     header("Location: index.php?inactive=1");
     exit;
 }
+

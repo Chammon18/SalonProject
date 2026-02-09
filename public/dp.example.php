@@ -1,9 +1,9 @@
 <?php
 
+// Copy this file to public/dp.php and update the credentials.
 $host = "localhost";
-$username = "root";
-$password = "";
-
+$username = "CHANGE_ME";
+$password = "CHANGE_ME";
 
 // mysqli connection (NO database name yet)
 $mysqli = new mysqli($host, $username, $password);
@@ -144,19 +144,16 @@ function create_table($mysqli)
 )";
     if ($mysqli->query($notification_sql) == false) return false;
 
-    // promotions
-    $promotion_sql = "CREATE TABLE IF NOT EXISTS `promotions`
+    // payment
+    $payment_sql = "CREATE TABLE IF NOT EXISTS `payments`
     (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    image VARCHAR(255),
-    start_date DATE NOT NULL,
-    end_date DATE NOT NULL,
-    discount VARCHAR(50), -- e.g., '20%', 'Buy 1 Get 1'
-    status TINYINT(1) DEFAULT 1, -- 1 = active, 0 = inactive
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )";
-    if ($mysqli->query($promotion_sql) == false) return false;
-
+    appointment_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('Cash','Kpay','AYApay') NOT NULL,
+    paid_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (appointment_id) REFERENCES appointments(id)
+)";
+    if ($mysqli->query($payment_sql) == false) return false;
 }

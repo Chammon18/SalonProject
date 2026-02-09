@@ -5,21 +5,7 @@
     require_once("../include/header.php");
 
     $today = date('Y-m-d');
-    $promoRes = $mysqli->query("
-    SELECT title, description, discount, image
-    FROM promotions
-    WHERE status = 1
-      AND start_date <= '$today'
-      AND end_date >= '$today'
-    ORDER BY start_date DESC
-    LIMIT 3
-");
-    $promoList = [];
-    if ($promoRes && $promoRes->num_rows > 0) {
-        while ($p = $promoRes->fetch_assoc()) {
-            $promoList[] = $p;
-        }
-    }
+
     ?>
 
     <section class="hero-min">
@@ -30,7 +16,7 @@
                 <h1>Luxury nail & beauty studio with a calm, flawless finish.</h1>
                 <p>Premium care, refined detail, and a serene experience designed just for you.</p>
                 <div class="hero-min-actions">
-                    <a href="../Mainpage/book.php" class="btn btn-primary">Book Appointment</a>
+                    <a href="../Mainpage/book.php" class="btn btn-primary book-btn">Book Appointment</a>
                     <a href="services.php" class="btn btn-ghost">View Services</a>
                 </div>
                 <div class="lux-micro">
@@ -114,7 +100,7 @@
                     <?php foreach ($promoList as $p): ?>
                         <div class="promo-card">
                             <div class="promo-badge"><?= htmlspecialchars($p['discount']) ?></div>
-                        <img src="/SalonProject/uploads/<?= htmlspecialchars($p['image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>">
+                            <img src="/SalonProject/uploads/<?= htmlspecialchars($p['image']) ?>" alt="<?= htmlspecialchars($p['title']) ?>">
                             <div class="promo-info">
                                 <h5><?= htmlspecialchars($p['title']) ?></h5>
                                 <p><?= htmlspecialchars($p['description']) ?></p>
@@ -147,7 +133,7 @@
                 <h4>Ready for your next appointment?</h4>
                 <p>Reserve your time and enjoy a luxury beauty experience.</p>
             </div>
-            <a href="../Mainpage/book.php" class="btn btn-primary">Book Now</a>
+            <a href="../Mainpage/book.php" class="btn btn-primary book-btn">Book Now</a>
         </div>
     </section>
 

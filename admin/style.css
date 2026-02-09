@@ -205,7 +205,93 @@ table tbody tr {
     background-color: #6c757d;
     color: #fff;
 }
+.staff-grid th,
+        .staff-grid td {
+            text-align: center;
+            vertical-align: middle;
+            padding: 6px 8px;
+            border-color: #eee;
+        }
 
+        .staff-grid .time-col {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        .staff-grid .sticky-col {
+            position: sticky;
+            left: 0;
+            background: #fff;
+            z-index: 2;
+            text-align: left;
+            min-width: 140px;
+            box-shadow: 2px 0 0 #f2f2f2;
+        }
+
+        .staff-grid .staff-specialty {
+            display: block;
+            font-size: 11px;
+            line-height: 1.2;
+        }
+
+        .staff-grid td {
+            width: 32px;
+            height: 24px;
+        }
+
+        .staff-grid .free-cell {
+            background: #d9f7e8;
+        }
+
+        .staff-grid .busy-cell {
+            background: red;
+        }
+
+        .staff-grid .slot-text {
+            display: block;
+            font-size: 10px;
+            line-height: 1.1;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 120px;
+        }
+
+        .staff-legend {
+            width: 14px;
+            height: 14px;
+            border-radius: 3px;
+            display: inline-block;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .staff-legend.staff-free {
+            background: green;
+        }
+
+        .staff-legend.staff-busy {
+            background: red;
+        }
+
+        .staff-date-search {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+
+        .staff-date-search .form-control {
+            width: 170px;
+        }
+
+        .revenue-grid th,
+        .revenue-grid td {
+            padding: 8px 10px;
+            font-size: 13px;
+        }
 /* Inactive row style */
 .inactive-row {
     opacity: 0.6;
@@ -261,7 +347,6 @@ table tbody tr {
     background-color: #dc3545;
     color: #fff;
 }
-
 
 /* Table styling */
 .table {
@@ -423,6 +508,20 @@ table tbody tr {
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
+            @media print {
+
+            .btn,
+            .nav-tabs,
+            .compact-form {
+                display: none !important;
+            }
+
+            .card {
+                box-shadow: none !important;
+                border: 0 !important;
+            }
+        }
+    
 /* report end */
 /* appointment */
     .row-muted {
