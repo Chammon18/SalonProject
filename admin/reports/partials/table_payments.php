@@ -18,8 +18,8 @@
                     <?php if (!empty($paymentRows)): ?>
                         <?php foreach ($paymentRows as $row): ?>
                             <tr>
-                                <td><?= date('d M Y', strtotime($row['paid_at'])) ?></td>
-                                <td><?= date('h:i A', strtotime($row['paid_at'])) ?></td>
+                                <td><?= date('d M Y', strtotime($row['appointment_date'] ?? $row['paid_at'])) ?></td>
+                                <td><?= date('h:i A', strtotime($row['appointment_time'] ?? $row['paid_at'])) ?></td>
                                 <td><?= htmlspecialchars($row['customer_name']) ?></td>
                                 <td><?= htmlspecialchars($row['services']) ?></td>
                                 <td><?= htmlspecialchars($row['staff_names'] ?: '-') ?></td>

@@ -10,6 +10,7 @@ if (!isset($_SESSION['admin_name'])) {
     exit;
 }
 $adminName = $_SESSION['admin_name'];
+$isPrintView = (($_GET['print'] ?? '') === '1');
 ?>
 
 <!DOCTYPE html>
@@ -28,7 +29,8 @@ $adminName = $_SESSION['admin_name'];
     <title>Welcom Admin</title>
 </head>
 
-<body>
+<body class="<?= $isPrintView ? 'print-view' : '' ?>">
+    <?php if (!$isPrintView): ?>
     <!-- SIDEBAR -->
     <div class="sidebar">
         <h4 class="text-center text-white mt-4">
@@ -46,3 +48,4 @@ $adminName = $_SESSION['admin_name'];
         <a href="admin_profile.php"><i class="fa-solid fa-user-tie"></i> Profile</a>
         <a href="admin_logout.php"><i class="fa-solid fa-arrow-right-from-bracket"></i> LogOut</a>
     </div>
+    <?php endif; ?>

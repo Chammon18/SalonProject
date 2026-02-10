@@ -508,7 +508,21 @@ table tbody tr {
         text-transform: uppercase;
         letter-spacing: 0.03em;
     }
+    .print-view .content {
+        margin-left: 0;
+        padding: 20px;
+    }
             @media print {
+            body {
+                background: #fff !important;
+            }
+            .sidebar {
+                display: none !important;
+            }
+            .content {
+                margin-left: 0 !important;
+                padding: 20px !important;
+            }
 
             .btn,
             .nav-tabs,

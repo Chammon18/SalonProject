@@ -6,13 +6,14 @@ $isPrint = ($_GET['print'] ?? '') === '1';
 $printParams = $_GET;
 $printParams['tab'] = $safeTab;
 $printParams['print'] = '1';
+$printParams['mode'] = 'daily';
 $printUrl = '?' . http_build_query($printParams);
 
 // Shared filters
 $startDate = $_GET['start_date'] ?? date('Y-m-01');
 $endDate = $_GET['end_date'] ?? date('Y-m-d');
 $month = $_GET['month'] ?? date('Y-m');
-$mode = $_GET['mode'] ?? 'daily';
+$mode = $isPrint ? 'daily' : ($_GET['mode'] ?? 'daily');
 $safeMode = in_array($mode, ['daily', 'monthly', 'monthly_staff'], true) ? $mode : 'daily';
 $paymentMethod = $_GET['payment_method'] ?? '';
 $allowedMethods = ['Cash', 'Kpay', 'AYApay'];
@@ -41,6 +42,11 @@ $monthlyRows = [];
 $monthlyStaffRows = [];
 if ($safeTab === 'incentive') {
     $statusFilter = "a.status = 'completed'";
+    if ($safeMode === 'daily') {
+        $today = date('Y-m-d');
+        $startDate = $today;
+        $endDate = $today;
+    }
 
     if ($safeMode === 'daily') {
         $dailySql = "
@@ -205,6 +211,8 @@ if ($safeTab === 'payments') {
                 p.paid_at,
                 p.amount,
                 p.payment_method,
+                a0.appointment_date,
+                a0.appointment_time,
                 u.name AS customer_name,
                 GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS services,
                 GROUP_CONCAT(DISTINCT st.name ORDER BY st.name SEPARATOR ', ') AS staff_names
@@ -226,6 +234,8 @@ if ($safeTab === 'payments') {
                 p.paid_at,
                 p.amount,
                 p.payment_method,
+                a0.appointment_date,
+                a0.appointment_time,
                 u.name AS customer_name,
                 GROUP_CONCAT(DISTINCT s.name ORDER BY s.name SEPARATOR ', ') AS services,
                 GROUP_CONCAT(DISTINCT st.name ORDER BY st.name SEPARATOR ', ') AS staff_names
@@ -248,5 +258,3 @@ if ($safeTab === 'payments') {
         }
     }
 }
-?>
-
