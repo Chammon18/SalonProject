@@ -32,6 +32,7 @@ Do not commit `public/dp.php` because it contains database credentials. Instead:
 2. Open `public/dp.php` and replace `CHANGE_ME` with your real DB username/password.
 
 Notes:
+
 - `public/dp.php` is ignored by git so it stays only on your machine.
 - If you ever committed real credentials before, change those passwords immediately.
 
@@ -42,7 +43,9 @@ git pull origin main
 ## 2. Edit or Add Files
 
 - check status => git status
-- Add Files to Git => git add (if only one file update => git add Mainpage/rebook.php)
+- Add Files to Git => git add (if only one file update => git add
+
+/rebook.php)
 
 ## 3. Commit Changes
 
