@@ -1,10 +1,14 @@
-
-
-
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
+    <?php
+    $scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    $adminBase = preg_replace('#/admin(?:/frontend)?/.*$#', '/admin', $scriptName);
+    if ($adminBase === $scriptName) {
+        $adminBase = '/admin';
+    }
+    ?>
     <meta charset="UTF-8">
     <title>Admin Login | Angel's Palace</title>
 
@@ -13,82 +17,10 @@
 
     <!-- FontAwesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-
-    <style>
-        body {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #6BCF9B, #F4A6C1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: 'Segoe UI', sans-serif;
-        }
-
-        .login-card {
-            width: 380px;
-            background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-        }
-
-        .login-header {
-            text-align: center;
-            padding: 30px 20px 10px;
-        }
-
-        .login-header h4 {
-            font-weight: 700;
-            color: #2f7d57;
-        }
-
-        .login-header p {
-            font-size: 14px;
-            color: #777;
-        }
-
-        .form-control {
-            border-radius: 12px;
-            padding: 12px;
-        }
-
-        .btn-login {
-            background: linear-gradient(135deg, #2f7d57, #f06292);
-            border: none;
-            color: #fff;
-            padding: 12px;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .btn-login:hover {
-            opacity: 0.9;
-        }
-
-        .icon-input {
-            position: relative;
-        }
-
-        .icon-input i {
-            position: absolute;
-            top: 50%;
-            left: 14px;
-            transform: translateY(-50%);
-            color: #aaa;
-        }
-
-        .icon-input input {
-            padding-left: 40px;
-        }
-
-        .brand {
-            font-weight: 700;
-            color: #f06292;
-        }
-    </style>
+    <link rel="stylesheet" href="<?= htmlspecialchars($adminBase . '/style.css') ?>">
 </head>
 
-<body>
+<body class="admin-login">
 
     <div class="login-card">
         <div class="login-header">
@@ -126,4 +58,3 @@
 </body>
 
 </html>
-

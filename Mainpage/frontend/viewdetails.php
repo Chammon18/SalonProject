@@ -1,7 +1,7 @@
 <?php require_once(__DIR__ . '/../../include/header.php'); ?>
 
 <!-- ===== SERVICE DETAILS ===== -->
-<div class="container my-5">
+<div class="container my-5 viewdetails-page">
     <div class="row g-5 align-items-center">
 
         <!-- IMAGE -->
@@ -86,72 +86,4 @@
 
 </div>
 
-<style>
-    /* Image Zoom Effect */
-    .img-zoom {
-        transition: transform 0.3s ease;
-    }
-
-    .img-zoom:hover {
-        transform: scale(1.1);
-    }
-
-    .nav-link {
-        color: black
-    }
-
-    .nav-tabs .nav-link {
-        color: #ff7e5f;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        border: none;
-        margin-right: 5px;
-        border-radius: 10px 10px 0 0;
-        padding: 10px 20px;
-    }
-
-    .nav-tabs .nav-link:hover {
-        background: linear-gradient(90deg, #ff7e5f, #feb47b);
-        color: #010000;
-    }
-
-    .nav-tabs .nav-link.active {
-        background: linear-gradient(90deg, #ff7e5f, #feb47b);
-        color: #010000;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Tab Content Background & Shadow */
-    .tab-content {
-        background: #fff5f0;
-        /* soft peach color */
-        border-radius: 0 0 10px 10px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Book Button Gradient */
-    .btn-book {
-        background: linear-gradient(90deg, #ff7e5f, #feb47b);
-        color: #fff;
-        font-weight: 600;
-        padding: 10px 25px;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-
-    .btn-book:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    }
-
-    /* Feature Icons */
-    .feature i {
-        color: #ff7e5f;
-    }
-
-    /* Card hover effect */
-    .card:hover {
-        transform: translateY(-3px);
-        transition: transform 0.2s;
-    }
-</style>
 <?php require_once(__DIR__ . '/../../public/alert.php'); ?>

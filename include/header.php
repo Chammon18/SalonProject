@@ -6,6 +6,12 @@ require_once("../public/common_query.php");
 $user_id = $_SESSION['id'] ?? 0;
 $isLoggedIn = isset($_SESSION['id']) && !empty($_SESSION['id']);
 
+$scriptName = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+$projectBase = preg_replace('#/Mainpage/.*$#', '', $scriptName);
+if ($projectBase === $scriptName) {
+    $projectBase = '';
+}
+
 
 // Only fetch user info if logged in
 if ($isLoggedIn) {
@@ -60,7 +66,7 @@ if ($isLoggedIn) {
     <title>Angel's Palace</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css" />
-    <link rel="stylesheet" href="/SalonProject/style.css">
+    <link rel="stylesheet" href="<?= htmlspecialchars($projectBase . '/style.css') ?>">
     <!-- alert sweeet -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

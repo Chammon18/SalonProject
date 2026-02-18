@@ -49,7 +49,7 @@ git pull origin main
 
 ## 3. Commit Changes
 
-git commit -m "Add rebook feature and update booking logic"
+git commit -m "Anything can write in this blacket"
 
 ## 4. Push to GitHub
 
